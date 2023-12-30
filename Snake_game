@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake</title>
+    <style>
+        body {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            background-color: rgba(0, 255, 204, 0.975);
+        }
+
+        #game-board {
+            background-color: rgb(255, 166, 0);
+            width: 100vmin;
+            height: 100vmin;
+            display: grid;
+            grid-template-rows: repeat(51, 1fr);
+            grid-template-columns: repeat(51, 1fr);
+        }
+
+        .snake {
+            background-color: hsl(58, 93%, 48%);
+            border: .25vmin solid black;
+        }
+
+        .food {
+            background-color: rgb(223, 19, 19);
+            border: .25vmin solid rgb(222, 11, 11);
+        }
+    </style>
+    <script src="game.js" defer type="module"></script>
+</head>
+<body>
+    <div id="game-board"></div>
+</body>
+<div class="container">
+</html>
+
+
+
+
+
+import { getInputDirection } from "./input.js"
+
+export const SNAKE_SPEED = 10
+const snakeBody = [{ x:11, y: 11}]
+let newSegments = 0
+
+export function update() {
+    addSegments()
+
+    const inputDirection = getInputDirection()
+    for (let i = snakeBody.length - 2; i>= 0; i--) {
+      snakeBody[ i + 1 ] = { ...snakeBody[i] }
+    }
+
+    snakeBody[0].x += inputDirection.x
+    snakeBody[0].y += inputDirection.y
+}
+
+
+export function draw(gameBoard) {
+    snakeBody.forEach(segment => {
+        const snakeElement = document.createElement('div')
+        snakeElement.style.gridRowStart = segment.y
+        snakeElement.style.gridColumnStart = segment.x
+        snakeElement.classList.add('snake')
+        gameBoard.appendChild(snakeElement)
+    })
+}
+
+export function expandSnake(amount) {
+    newSegments += amount
+}
+
+export function onSnake(position, { ignoreHead = false } = {}) {
+    return snakeBody.some((segment, index) => {
+        if ( ignoreHead && index === 0 ) return false
+        return equalPositions(segment, position)
+    })
+}
+
+export function getSnakeHead() {
+    return snakeBody[0]
+}
+
+function equalPositions(pos1, pos2) {
+    return pos1.x === pos2.x && pos1.y === pos2.y
+}
+
+function addSegments() {
+    for(let i = 0; i < newSegments; i++) {
+     snakeBody.push({ ...snakeBody[snakeBody.length - 1] })
+    }
+
+    newSegments = 0
+}
+
+
+
+
+
+
+
+let inputDirection = { x: 0, y: 0}
+let lastInputDirection = { x: 0, y: 0}
+
+window.addEventListener('keydown', e=> {
+    switch (e.key) {
+        case 'ArrowUp':
+            if(lastInputDirection.y !== 0) break
+            inputDirection = { x: 0, y: -1 }
+            break
+        case 'ArrowDown':
+            if(lastInputDirection.y !== 0) break
+            inputDirection = { x: 0, y: 1 }
+            break
+        case 'ArrowLeft':
+            if(lastInputDirection.x !== 0) break
+            inputDirection = { x: -1, y: 0 }
+            break
+        case 'ArrowRight':
+            if(lastInputDirection.x !== 0) break
+            inputDirection = { x: 1, y: 0 }
+            break               
+    }
+})
+
+export function getInputDirection() {
+    lastInputDirection = inputDirection
+    return inputDirection
+}
+
+
+
+
+
+
+import { update as updateSnake, draw as drawSnake, SNAKE_SPEED } from './snake.js'
+import { update as updateFood, draw as drawFood } from './food.js'
+
+
+let lastRenderTime = 0
+let gameOver = false
+const gameBoard = document.getElementById('game-board')
+
+function main(currentTime) {
+
+  window.requestAnimationFrame(main)
+  const secondsSinceLastRender = (currentTime - lastRenderTime) / 1000
+  if (secondsSinceLastRender < 1 / SNAKE_SPEED) 
+  return
+  
+  
+  lastRenderTime = currentTime
+
+  update()
+  draw()
+}
+window.requestAnimationFrame(main)
+
+function update() {
+  updateSnake()
+  updateFood()
+}
+
+function draw() {
+  gameBoard.innerHTML = ''
+  drawSnake(gameBoard)
+  drawFood(gameBoard)
+}
+
+function checkDeath() {
+  gameOver = outsideGrid(getSnakeHead()) || snakeIntersection()
+}
+
+
+
+
+
+const GRID_SIZE = 21
+
+export function randomGridPosition() {
+    return {
+        x: Math.floor(Math.random() * GRID_SIZE) + 1,
+        y: Math.floor(Math.random() * GRID_SIZE) + 1
+    }
+}
+
+export function outsideGrid(position) {
+    return (
+        position.x < 1 || position.x > GRID_SIZE ||
+        position.y < 1 || position.y > GRID_SIZE
+    )
+}
+
+
+
+
+
+
+import { onSnake, expandSnake } from './snake.js'
+import { randomGridPosition } from './grid.js'
+
+let food = getrandomFoodPosition()
+const EXPANSION_RATE = 1
+
+export function update() {
+    if (onSnake(food)) {
+        expandSnake(EXPANSION_RATE)
+        food = getrandomFoodPosition()
+    }    
+}
+
+export function draw(gameBoard) {
+    const foodElement = document.createElement('div')
+    foodElement.style.gridRowStart = food.y
+    foodElement.style.gridColumnStart = food.x
+    foodElement.classList.add('food')
+    gameBoard.appendChild(foodElement)
+}
+
+function getrandomFoodPosition() {
+    let newFoodPosition
+    while (newFoodPosition == null || onSnake(newFoodPosition)) {
+        newFoodPosition = randomGridPosition()
+    }
+    return newFoodPosition
+}
